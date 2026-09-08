@@ -2,8 +2,6 @@
 
 一个可以直接在本机运行的中文网页版空海运输经营游戏。地图、设施和公开环境数据真实；运输班次、载具性能、经济和事件概率是游戏模拟。
 
-项目位置：D:\AnacondaSavedFiles\Other_code\Aero_Plane
-
 ## 发布到网络
 
 已支持 GitHub Pages：玩家浏览器承担仿真计算并独立保存进度，作者电脑无需持续开机。上传、Pages 开关、定时世界更新和完整命令见 [DEPLOY.md](DEPLOY.md)。
