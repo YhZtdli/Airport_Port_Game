@@ -1,0 +1,70 @@
+import{createRequire}from'node:module';
+import assert from'node:assert/strict';
+import{readFile}from'node:fs/promises';
+import{createHash}from'node:crypto';
+const require=createRequire(import.meta.url),{chromium}=require(process.env.PLAYWRIGHT_PATH||process.env.USERPROFILE+'/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/playwright');
+const base=process.env.TEST_URL||'http://127.0.0.1:8788';
+assert.ok((await(await fetch(base+'/api/health')).json()).ephemeral,'Use an isolated --ephemeral server');
+const savePath=new URL('../data/save.json',import.meta.url),hash=async()=>createHash('sha256').update(await readFile(savePath)).digest('hex'),beforeHash=await hash();
+const browser=await chromium.launch({headless:true,channel:'msedge'});
+const page=await browser.newPage({viewport:{width:1440,height:1050}}),errors=[];
+page.on('pageerror',e=>errors.push(e.message));
+try{
+ await page.goto(base,{waitUntil:'networkidle'});await page.waitForFunction(()=>!!window.orbis);
+ await page.locator('[data-mode="air"]').click();
+ const input=page.locator('#destination-input'),result=page.locator('#destination-results');
+ async function search(query){await page.keyboard.press('Escape');await input.fill(query);await result.waitFor({state:'visible'});}
+ async function chooseCode(code,query=code){await search(query);await result.locator('[data-facility]').filter({has:page.locator('b',{hasText:new RegExp('^'+code)})}).first().click();}
+ await search('丹麦');assert.ok((await result.locator('nav').innerText()).includes('丹麦'));
+ assert.ok(await result.locator('.group-option').count()>=5);
+ await result.locator('[data-group-by="city"]').click();
+ await result.locator('.group-option').filter({hasText:'哥本哈根'}).first().click();
+ assert.ok((await result.locator('nav').innerText()).includes('哥本哈根'));
+ await result.locator('[data-facility="A2542"]').click();assert.ok((await input.inputValue()).includes('CPH'));
+ console.log('PASS Denmark → city → Copenhagen airport');
+ await search('北京');assert.ok(await result.locator('[data-facility="A27188"]').count());assert.ok(await result.locator('[data-facility="A330820"]').count());
+ await page.screenshot({path:'work/qa/search-beijing.png',fullPage:true});
+ await result.locator('[data-facility="A330820"]').click();assert.ok((await input.inputValue()).includes('PKX'));
+ await search('ZBAA');await input.press('Enter');assert.ok((await input.inputValue()).includes('PEK'));
+ console.log('PASS Beijing airports and ICAO keyboard selection');
+ await search('美国');assert.equal(await result.locator('[data-facility]').count(),20);
+ await result.locator('[data-more]').click();assert.equal(await result.locator('[data-facility]').count(),40);
+ await result.locator('[data-more-groups]').click();assert.ok(await result.locator('.group-option').count()>8);
+ await result.locator('nav [data-crumb="0"]').click();assert.equal((await result.locator('nav').innerText()).trim(),'全球');
+ console.log('PASS pagination of facilities and subdivisions, global breadcrumb');
+ await search('中国');for(const label of['中国台湾省','中国香港','中国澳门'])assert.ok((await result.innerText()).includes(label));
+ await result.locator('.group-option').filter({hasText:'中国台湾省'}).click();
+ assert.ok((await result.locator('nav').innerText()).includes('中国台湾省'));
+ assert.ok((await result.locator('.search-option').first().innerText()).includes('中国台湾省'));
+ await result.waitFor({state:'visible'});
+ await page.screenshot({path:'work/qa/search-china.png',fullPage:false});
+ for(const [query,code,label]of [['香港','HKG','中国香港'],['澳门','MFM','中国澳门'],['TPE','TPE','中国台湾省']]){
+  await chooseCode(code,query);assert.ok((await input.inputValue()).includes(label));
+ }
+ console.log('PASS Chinese subdivisions and selected facility names');
+ await search('香港');await result.locator('[data-type]').selectOption('heliport');
+ const heliId=await result.locator('[data-facility]:not(:disabled)').first().getAttribute('data-facility');
+ await result.locator('[data-facility]:not(:disabled)').first().click();
+ assert.equal(await page.locator('#asset-select').inputValue(),'new:helicopter');
+ const count=await page.evaluate(()=>orbis.state.jobs.length);await page.locator('#dispatch-button').click();await page.waitForFunction(n=>orbis.state.jobs.length===n+1,count);
+ assert.equal(await page.evaluate(()=>orbis.state.jobs.at(-1).destination),heliId);assert.equal(await page.evaluate(()=>orbis.state.jobs.at(-1).spec),'helicopter');
+ await search('加拿大');await result.locator('[data-type]').selectOption('seaplane_base');
+ assert.ok(await result.locator('[data-facility]:not(:disabled)').count()>0);
+ await result.locator('[data-facility]:not(:disabled)').first().click();assert.equal(await page.locator('#asset-select').inputValue(),'new:amphibian');
+ console.log('PASS heliport dispatch and automatic compatible aircraft selection');
+ const closed=await page.evaluate(()=>orbis.context.facilities.find(f=>f.closed&&f.code.startsWith('US-')));
+ await search(closed.code);await result.locator('[data-type]').selectOption('all');await result.locator('[data-closed]').check();
+ assert.ok(await result.locator('.is-closed').count()>0);assert.ok(await result.locator('.is-closed').first().isDisabled());await result.locator('[data-closed]').uncheck();
+ await page.keyboard.press('Escape');await page.locator('[data-mode="sea"]').click();await search('香港');
+ assert.ok((await result.innerText()).includes('中国香港'));await result.locator('[data-facility="PCNHKG"]').click();assert.ok((await input.inputValue()).includes('中国香港'));
+ console.log('PASS closed records are read-only and maritime geography matches');
+ await page.locator('[data-mode="air"]').click();await page.setViewportSize({width:390,height:844});
+ await input.scrollIntoViewIfNeeded();await search('丹麦');
+ const box=await result.boundingBox();assert.ok(box.x>=0&&box.x+box.width<=390&&box.y>=0&&box.y+box.height<=845);
+ await page.screenshot({path:'work/qa/search-mobile.png',fullPage:false});
+ await result.locator('[data-group-by="city"]').click();await result.locator('.group-option').filter({hasText:'哥本哈根'}).click();
+ await result.locator('[data-facility="A2542"]').click();assert.ok((await input.inputValue()).includes('CPH'));
+ assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth+1));
+ assert.equal(errors.length,0,errors.join('\n'));assert.equal(await hash(),beforeHash);
+ console.log('PASS mobile popover, no horizontal overflow, no JavaScript errors, production save unchanged');
+}finally{await browser.close();}

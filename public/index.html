@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="zh-CN"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#0b1622">
+<title>ORBIS · 全球运输模拟</title><link rel="icon" type="image/svg+xml" href="./favicon.svg">
+<link rel="stylesheet" href="./vendor/leaflet.css"><link rel="stylesheet" href="./styles.css">
+<script defer src="./vendor/leaflet.js"></script><script type="module" src="./js/app.js"></script></head>
+<body>
+<div id="loading"><div class="loading-orb">◎</div><b>ORBIS</b><span>正在连接你的全球运输网络…</span></div>
+<header class="topbar"><a class="brand" href="./" aria-label="ORBIS 首页"><span class="brand-orb">◎</span>ORBIS<span class="brand-separator"></span><small>全球运输模拟</small></a><div class="top-links"><span class="edition">OPERATIONS / 01</span><button id="save-button" class="quiet-button">保存进度</button><button id="guide-button" class="icon-button" aria-label="游戏指南">?</button><span class="avatar">O</span></div></header>
+<aside class="rail">
+<button class="rail-button active" data-view="map" aria-label="全球地图"><span data-icon="globe"></span><small>全球</small></button>
+<button class="rail-button" data-view="operations" aria-label="班次管理"><span data-icon="route"></span><small>调度</small></button>
+<button class="rail-button" data-view="intel" aria-label="世界情报"><span data-icon="radar"></span><small>情报</small></button>
+<button class="rail-button" data-view="company" aria-label="运营与成长"><span data-icon="chart"></span><small>经营</small></button>
+<div class="rail-bottom"><span class="small-dot green"></span><span id="runtime-label">浏览器运行</span><small>v0.1</small></div></aside>
+<main>
+<section class="page-heading"><div><div class="eyebrow">YOUR WORLD. YOUR ROUTES.</div><h1>全球调度中心<span class="live-tag"><i></i>模拟网络</span></h1><p>从一条航线开始，让世界彼此相连。</p></div>
+<div class="world-clock"><span class="eyebrow">SIMULATION TIME · UTC</span><strong id="sim-clock">—</strong><div class="time-controls"><button id="pause-button" aria-label="播放或暂停">▶</button><button data-speed="1">1×</button><button data-speed="24">24×</button><button data-speed="96" class="speed-selected">96×</button><button data-speed="720">720×</button><button id="advance-button" title="推进 6 个游戏小时">+6h</button></div></div></section>
+<section class="metrics">
+<div class="metric"><span data-icon="plane"></span><div><label>空中运输</label><strong id="air-stat">0 <small>班执行中</small></strong></div><span class="metric-spark blue">↗</span></div>
+<div class="metric"><span data-icon="ship"></span><div><label>海上运输</label><strong id="sea-stat">0 <small>班执行中</small></strong></div><span class="metric-spark amber">↗</span></div>
+<div class="metric"><span data-icon="clock"></span><div><label>准点完成率</label><strong id="ontime-stat">— <small>等待首班</small></strong></div></div>
+<div class="metric"><span data-icon="wallet"></span><div><label>运营资金</label><strong id="cash-stat">$8.00M</strong></div><span id="reputation-stat" class="reputation">信誉 92</span></div></section>
+<div class="game-grid">
+<section class="map-card"><div class="map-toolbar"><div class="map-title"><span class="small-dot blue-dot"></span>世界网络<span class="muted divider">/</span><span id="facility-count" class="muted">载入设施</span></div><button id="fit-map" class="dark-button"><span data-icon="expand"></span>全球视图</button></div>
+<div id="map" aria-label="可交互全球地图"></div>
+<div class="map-layers"><button data-layer="airports" class="on"><span data-icon="plane"></span>机场</button><button data-layer="ports" class="on"><span data-icon="ship"></span>港口</button><button data-layer="weather"><span data-icon="cloud"></span>天气</button><button data-layer="currents"><span data-icon="wind"></span>洋流</button><button data-layer="risk" class="on"><span data-icon="alert"></span>风险</button></div>
+<div class="map-legend"><span><i class="line blue-line"></i>航空</span><span><i class="line amber-line"></i>海运</span><span><i class="risk-box"></i>公告 / 演练区域</span></div>
+<div id="drawing-hint" class="drawing-hint hidden">点击地图添加途经点 · 支持拖动点位 · Esc 结束</div><div class="map-credit">Natural Earth · OurAirports · Searoute / Eurostat</div></section>
+<aside class="planner"><div class="panel-top"><div><div class="eyebrow">ROUTE PLANNER</div><h2>下一站，哪里？</h2></div><span data-icon="route"></span></div>
+<div class="mode-switch"><button data-mode="air" class="selected"><span data-icon="plane"></span>航空</button><button data-mode="sea"><span data-icon="ship"></span>海运</button></div>
+<div class="route-fields"><div class="field station-field"><label for="origin-input"><i class="origin-dot"></i>出发地</label><input id="origin-input" autocomplete="off" placeholder="搜索国家、城市、设施名或代码"><div id="origin-results" class="search-results hidden"></div></div><button id="swap-button" aria-label="交换出发地和目的地">⇅</button>
+<div class="field station-field"><label for="destination-input"><i class="dest-dot"></i>目的地</label><input id="destination-input" autocomplete="off" placeholder="搜索国家、城市、设施名或代码"><div id="destination-results" class="search-results hidden"></div></div></div>
+<div class="field"><label for="asset-select">执行载具 <span class="muted">租赁或调度现有载具</span></label><select id="asset-select"></select></div>
+<div class="waypoint-header"><label>途经点 <span id="waypoint-count">0</span></label><div><button id="auto-route" class="text-button">推荐路线</button><button id="clear-route" class="text-button">清空</button></div></div>
+<div id="waypoint-list" class="waypoint-list"></div><button id="draw-route" class="outline-button"><span data-icon="plus"></span>在地图上自由绘制</button>
+<div class="fuel-row"><label for="fuel-slider">出发燃油</label><strong id="fuel-value">100%</strong></div><input id="fuel-slider" type="range" min="5" max="100" step="5" value="100">
+<details class="schedule-details"><summary>班次衔接与出发时间<span>＋</span></summary><div class="field"><label for="departure-offset">距现在出发 / 小时</label><input id="departure-offset" type="number" min="0" max="10000" value="0" step=".5"></div><div class="field"><label for="dependency-select">等待前序班次货物 / 旅客</label><select id="dependency-select"><option value="">独立出发</option></select></div></details>
+<div id="route-estimate" class="route-estimate"><span class="muted">选择出发地和目的地以评估航线</span></div><div id="route-warnings" class="route-warnings"></div>
+<button id="dispatch-button" class="primary-button"><span data-icon="plus"></span>加入调度网络<span>↗</span></button><div class="planner-note">你可以自由规划。风险、油耗与连锁延误由系统结算。</div></aside>
+<section class="operations-card"><div class="operations-header"><div class="table-tabs"><button class="selected" data-filter="all">全部班次 <span id="job-count">0</span></button><button data-filter="air">航空</button><button data-filter="sea">海运</button><button data-filter="issues">需关注 <span id="issues-count" class="issue-count">0</span></button></div><button id="events-button" class="text-button"><span data-icon="activity"></span>事件与影响</button></div>
+<div class="table-scroll"><table><thead><tr><th>班次 / 载具</th><th>运输航线</th><th>任务进度</th><th>燃油余量</th><th>运行状态</th><th></th></tr></thead><tbody id="jobs-table"></tbody></table></div>
+<div class="operations-footer"><span id="network-summary">—</span><button id="exercise-button" class="text-button">启动一次风险演练 ↗</button></div></section></div>
+<footer class="app-footer"><button id="data-status"><span class="small-dot amber-dot"></span>正在检查世界数据</button><div><span id="growth-label">阶段 01 · 建立连接</span><span class="muted">|</span><span>真实地理 · 模拟运输</span></div></footer>
+</main><div id="toast" role="status" class="toast hidden"></div>
+<dialog id="modal"><div class="modal-top"><h2 id="modal-title"></h2><button id="close-modal" class="icon-button" aria-label="关闭弹窗">×</button></div><div id="modal-content"></div></dialog>
+<input id="import-input" type="file" accept=".json" hidden></body></html>

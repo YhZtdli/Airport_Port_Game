@@ -1,0 +1,15 @@
+data/save.json
+data/*.tmp
+data/*.download
+work/
+node_modules/
+.env
+
+
+# Personal progress and generated publishing output
+/data/environment.json
+/dist/
+/.cache/
+/release/
+.env.*
+!.env.example

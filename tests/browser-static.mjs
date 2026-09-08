@@ -1,0 +1,57 @@
+import{createRequire}from'node:module';
+import assert from'node:assert/strict';
+import{readFile}from'node:fs/promises';
+import{createHash}from'node:crypto';
+const require=createRequire(import.meta.url),{chromium}=require(process.env.PLAYWRIGHT_PATH||process.env.USERPROFILE+'/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/playwright');
+const base=process.env.STATIC_TEST_URL||'http://127.0.0.1:8790/orbis/';
+const response=await fetch(base+'runtime-config.json');assert.equal(response.headers.get('x-orbis-preview'),'static-only','Use the local static-only preview');
+assert.equal((await response.json()).mode,'static');
+const savePath=new URL('../data/save.json',import.meta.url),fingerprint=async()=>createHash('sha256').update(await readFile(savePath)).digest('hex'),before=await fingerprint();
+const browser=await chromium.launch({headless:true,channel:'msedge'}),first=await browser.newContext({viewport:{width:1440,height:1050}});
+const page=await first.newPage(),errors=[],requests=[],bad=[];
+page.on('pageerror',e=>errors.push(e.message));page.on('request',r=>{requests.push(r.url());if(r.method()!=='GET')bad.push(r.method()+' '+r.url());});
+await first.route('**/api/**',route=>{bad.push(route.request().url());return route.abort();});
+async function ready(p){await p.goto(base,{waitUntil:'networkidle'});await p.waitForFunction(()=>!!window.orbis);}
+async function save(p){const revision=await p.evaluate(async()=>(await orbis.runtime.request('/api/save')).revision);await p.locator('#save-button').click();await p.waitForFunction(async old=>(await orbis.runtime.request('/api/save')).revision>old,revision);}
+try{
+ await ready(page);assert.equal(await page.evaluate(()=>orbis.runtime.mode),'static');assert.equal(await page.evaluate(()=>orbis.state.jobs.length),9);
+ assert.ok(requests.some(u=>u.endsWith('facilities.json.gz')));assert.equal(await page.locator('#runtime-label').innerText(),'浏览器运行');
+ await page.locator('#destination-input').fill('LAX');await page.locator('#destination-results [data-facility]:not(:disabled)').first().click();
+ await page.locator('#draw-route').click();await page.locator('#map').click({position:{x:510,y:170}});assert.equal(await page.locator('#waypoint-count').innerText(),'1');await page.locator('#clear-route').click();await page.keyboard.press('Escape');
+ await page.locator('#fuel-slider').fill('10');await page.locator('#fuel-slider').dispatchEvent('input');await page.locator('#dispatch-button').click();await page.waitForFunction(()=>orbis.state.jobs.length===10);
+ await page.locator('#advance-button').click();await save(page);
+ const checkpoint=await page.evaluate(()=>({jobs:orbis.state.jobs.length,hour:orbis.state.hour,id:orbis.state.id}));
+ await page.reload({waitUntil:'networkidle'});await page.waitForFunction(()=>!!window.orbis);
+ assert.deepEqual(await page.evaluate(()=>({jobs:orbis.state.jobs.length,hour:orbis.state.hour,id:orbis.state.id})),checkpoint);assert.equal(await page.evaluate(()=>orbis.state.speed),0);
+ console.log('PASS pure static subpath, gzip assets, dispatch, simulation and IndexedDB reload');
+ const second=await browser.newContext();await second.addInitScript(()=>{window.DecompressionStream=undefined;});const other=await second.newPage();await ready(other);
+ assert.equal(await other.evaluate(()=>orbis.state.jobs.length),9);assert.notEqual(await other.evaluate(()=>orbis.state.id),checkpoint.id);await second.close();
+ console.log('PASS independent players and uncompressed fallback');
+ const stale=await first.newPage();await ready(stale);
+ await page.evaluate(()=>orbis.advance(1));await save(page);await stale.evaluate(()=>orbis.advance(2));await stale.locator('#save-button').click();
+ await stale.waitForFunction(()=>document.querySelector('#toast').textContent.includes('另一窗口'));
+ assert.ok(Math.abs(await page.evaluate(async()=>(await orbis.runtime.request('/api/save')).state.hour)-(checkpoint.hour+1))<1e-7);await stale.close();
+ console.log('PASS atomic conflict protection between tabs');
+ await page.locator('[data-view="company"]').click();assert.ok((await page.locator('#modal-content').innerText()).includes('此浏览器'));
+ const downloaded=page.waitForEvent('download');await page.locator('[data-action="export"]').click();const file=await downloaded;await file.saveAs('work/qa/static-save-export.json');
+ await page.locator('[data-action="new-game"]').click();await page.locator('[data-action="confirm-new"]').click();
+ await page.waitForFunction(()=>orbis.state.jobs.length===9&&orbis.state.hour===0);
+ assert.equal(await page.locator('#fuel-slider').inputValue(),'100');assert.equal(await page.evaluate(()=>orbis.plan.waypoints.length),0);
+ await page.locator('#import-input').setInputFiles('work/qa/static-save-export.json');
+ await page.waitForFunction(()=>orbis.state.jobs.length===10);await save(page);
+ await page.route('**/data/environment.json',route=>route.abort());await page.reload({waitUntil:'networkidle'});await page.waitForFunction(()=>!!window.orbis);
+ assert.equal(await page.evaluate(()=>orbis.state.jobs.length),10);assert.ok((await page.evaluate(()=>orbis.context.environment.snapshotMessage)).includes('缓存'));
+ console.log('PASS export, reset, import and cached world data fallback');
+ await page.locator('[data-mode="sea"]').click();await page.waitForFunction(()=>orbis.plan.charted);
+ assert.ok(await page.evaluate(()=>orbis.plan.path.length>10));
+ await page.locator('[data-view="intel"]').click();assert.ok((await page.locator('#modal-content').innerText()).includes('GitHub Actions'));await page.locator('#close-modal').click();
+ await page.screenshot({path:'work/qa/static-desktop.png',fullPage:true});
+ await page.setViewportSize({width:390,height:844});await page.locator('[data-mode="air"]').click();await page.locator('#destination-input').fill('丹麦');await page.locator('#destination-results').waitFor({state:'visible'});
+ assert.ok((await page.locator('#destination-results nav').innerText()).includes('丹麦'));assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1));
+ await page.screenshot({path:'work/qa/static-mobile.png'});
+ const restricted=await browser.newContext();await restricted.addInitScript(()=>Object.defineProperty(window,'indexedDB',{value:undefined}));const temporary=await restricted.newPage();await ready(temporary);
+ assert.equal(await temporary.evaluate(()=>orbis.runtime.persistent),false);assert.ok((await temporary.locator('#toast').innerText()).includes('临时'));
+ await restricted.close();
+ assert.equal(errors.length,0,errors.join('\n'));assert.equal(bad.length,0,bad.join('\n'));assert.equal(await fingerprint(),before);
+ console.log('PASS sea routing, mobile search, storage-denied fallback, zero API/POST requests, private local save unchanged');
+}finally{await browser.close();}

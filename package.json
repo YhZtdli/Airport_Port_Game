@@ -1,0 +1,18 @@
+{
+  "name": "orbis-global-transport-simulator",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "全球空海运输网络经营模拟",
+  "scripts": {
+    "start": "node server.mjs",
+    "test": "node --test tests/*.test.mjs",
+    "data:refresh": "node scripts/bootstrap.mjs",
+    "build": "node scripts/build-static.mjs",
+    "world:refresh": "node scripts/refresh-world.mjs",
+    "preview": "node scripts/preview-static.mjs"
+  },
+  "engines": {
+    "node": ">=22"
+  }
+}

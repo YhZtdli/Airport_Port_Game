@@ -1,0 +1,62 @@
+name: Publish ORBIS to GitHub Pages
+
+on:
+  push:
+    branches: ["main"]
+  workflow_dispatch:
+  schedule:
+    # UTC 00:37 and 12:37: Beijing time 08:37 and 20:37.
+    - cron: "37 0,12 * * *"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: orbis-pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v7
+        with:
+          node-version: "24"
+          package-manager-cache: false
+      - name: Run simulation and runtime checks
+        run: node --test tests/*.test.mjs
+      - name: Restore last public world snapshot
+        uses: actions/cache@v6
+        with:
+          path: .cache/world
+          key: orbis-world-v1-${{ github.run_id }}-${{ github.run_attempt }}
+          restore-keys: |
+            orbis-world-v1-
+      - name: Refresh public weather, ocean and advisory data
+        run: node scripts/refresh-world.mjs
+      - name: Build static game
+        run: node scripts/build-static.mjs
+      - name: Verify deployable files
+        run: node scripts/verify-static.mjs
+      - uses: actions/upload-pages-artifact@v4
+        with:
+          path: dist
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy website
+        id: deployment
+        uses: actions/deploy-pages@v4
