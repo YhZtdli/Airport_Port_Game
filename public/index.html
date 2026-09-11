@@ -1,7 +1,16 @@
 <!doctype html>
 <html lang="zh-CN"><head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#0b1622">
-<title>ORBIS · 全球运输模拟</title><link rel="icon" type="image/svg+xml" href="./favicon.svg">
+<title>ORBIS 全球航班与海运模拟游戏 | Flight &amp; Shipping Simulator</title>
+  <meta name="description" content="ORBIS 是免费的全球航班与海运模拟网页游戏。在真实世界地图上检索机场与港口，自由规划航线，管理飞机、船舶、燃油、天气风险与连锁延误。A browser-based flight and shipping simulator.">
+  <link rel="canonical" href="https://yhztdli.github.io/Airport_Port_Game/">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="ORBIS">
+  <meta property="og:title" content="ORBIS 全球航班与海运模拟游戏 | Flight &amp; Shipping Simulator">
+  <meta property="og:description" content="ORBIS 是免费的全球航班与海运模拟网页游戏。在真实世界地图上检索机场与港口，自由规划航线，管理飞机、船舶、燃油、天气风险与连锁延误。A browser-based flight and shipping simulator.">
+  <meta property="og:url" content="https://yhztdli.github.io/Airport_Port_Game/">
+  <meta property="og:locale" content="zh_CN">
+<link rel="icon" type="image/svg+xml" href="./favicon.svg">
 <link rel="stylesheet" href="./vendor/leaflet.css"><link rel="stylesheet" href="./styles.css">
 <script defer src="./vendor/leaflet.js"></script><script type="module" src="./js/app.js"></script></head>
 <body>
@@ -14,7 +23,7 @@
 <button class="rail-button" data-view="company" aria-label="运营与成长"><span data-icon="chart"></span><small>经营</small></button>
 <div class="rail-bottom"><span class="small-dot green"></span><span id="runtime-label">浏览器运行</span><small>v0.1</small></div></aside>
 <main>
-<section class="page-heading"><div><div class="eyebrow">YOUR WORLD. YOUR ROUTES.</div><h1>全球调度中心<span class="live-tag"><i></i>模拟网络</span></h1><p>从一条航线开始，让世界彼此相连。</p></div>
+<section class="page-heading"><div><div class="eyebrow">YOUR WORLD. YOUR ROUTES.</div><h1>全球调度中心<span class="live-tag"><i></i>模拟网络</span></h1><p>全球航班与海运模拟：自由规划航线，管理你的运输网络。</p></div>
 <div class="world-clock"><span class="eyebrow">SIMULATION TIME · UTC</span><strong id="sim-clock">—</strong><div class="time-controls"><button id="pause-button" aria-label="播放或暂停">▶</button><button data-speed="1">1×</button><button data-speed="24">24×</button><button data-speed="96" class="speed-selected">96×</button><button data-speed="720">720×</button><button id="advance-button" title="推进 6 个游戏小时">+6h</button></div></div></section>
 <section class="metrics">
 <div class="metric"><span data-icon="plane"></span><div><label>空中运输</label><strong id="air-stat">0 <small>班执行中</small></strong></div><span class="metric-spark blue">↗</span></div>
@@ -41,7 +50,7 @@
 <section class="operations-card"><div class="operations-header"><div class="table-tabs"><button class="selected" data-filter="all">全部班次 <span id="job-count">0</span></button><button data-filter="air">航空</button><button data-filter="sea">海运</button><button data-filter="issues">需关注 <span id="issues-count" class="issue-count">0</span></button></div><button id="events-button" class="text-button"><span data-icon="activity"></span>事件与影响</button></div>
 <div class="table-scroll"><table><thead><tr><th>班次 / 载具</th><th>运输航线</th><th>任务进度</th><th>燃油余量</th><th>运行状态</th><th></th></tr></thead><tbody id="jobs-table"></tbody></table></div>
 <div class="operations-footer"><span id="network-summary">—</span><button id="exercise-button" class="text-button">启动一次风险演练 ↗</button></div></section></div>
-<footer class="app-footer"><button id="data-status"><span class="small-dot amber-dot"></span>正在检查世界数据</button><div><span id="growth-label">阶段 01 · 建立连接</span><span class="muted">|</span><span>真实地理 · 模拟运输</span></div></footer>
+<footer class="app-footer"><button id="data-status"><span class="small-dot amber-dot"></span>正在检查世界数据</button><div><span id="growth-label">阶段 01 · 建立连接</span><span class="muted">|</span><a href="./about.html" target="_blank" rel="noopener">游戏介绍 / About</a></div></footer>
 </main><div id="toast" role="status" class="toast hidden"></div>
 <dialog id="modal"><div class="modal-top"><h2 id="modal-title"></h2><button id="close-modal" class="icon-button" aria-label="关闭弹窗">×</button></div><div id="modal-content"></div></dialog>
 <input id="import-input" type="file" accept=".json" hidden></body></html>
